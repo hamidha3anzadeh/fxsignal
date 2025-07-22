@@ -1,0 +1,9 @@
+signal.json
+{
+  "symbol": "XAUUSD",
+  "signal": "none",
+  "price": 0,
+  "sl": 0,
+  "tp": 0,
+  "time": "2025-07-22T00:00:00Z"
+}
