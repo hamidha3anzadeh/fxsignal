@@ -1,0 +1,135 @@
+//+------------------------------------------------------------------+
+//|                                                    signalEA.mq4 |
+//|                     --- GitHub Signal Reader ---                 |
+//+------------------------------------------------------------------+
+#property strict
+
+// تنظیمات ورودی
+input string SignalURL = "https://raw.githubusercontent.com/hamidha3anzadeh/fxsignal/refs/heads/main/xauusd.json";
+input double Lots = 0.1;
+input int Slippage = 3;
+input int MagicNumber = 123456;
+
+// متغیرهای جهانی
+string lastSignalTime = "";
+
+//+------------------------------------------------------------------+
+//| تابع اصلی                                                        |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   static datetime lastBarTime = 0;
+   if (Time[0] == lastBarTime) return;
+   lastBarTime = Time[0];
+
+   string data = DownloadSignal();
+   if (data == "") return;
+
+   string symbol, signal, timeStr;
+   double price, sl, tp;
+
+   if (!ParseJSON(data, symbol, signal, price, sl, tp, timeStr))
+      return;
+
+   if (symbol != Symbol()) return;
+   if (timeStr == lastSignalTime) return;
+
+   lastSignalTime = timeStr;
+
+   if (ExistsOpenTrade(MagicNumber)) return;
+
+   if (signal == "buy")
+   {
+      OrderSend(Symbol(), OP_BUY, Lots, price, Slippage, sl, tp, "Buy Order", MagicNumber, 0, clrGreen);
+   }
+   else if (signal == "sell")
+   {
+      OrderSend(Symbol(), OP_SELL, Lots, price, Slippage, sl, tp, "Sell Order", MagicNumber, 0, clrRed);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| دانلود فایل از GitHub                                           |
+//+------------------------------------------------------------------+
+string DownloadSignal()
+{
+   char post[];
+   char result[];
+   string headers;
+   int timeout = 5000;
+
+   int res = WebRequest("GET", SignalURL, "", timeout, post, result, headers);
+
+   if (res == -1)
+   {
+      Print("WebRequest failed: ", GetLastError());
+      return "";
+   }
+
+   string data = CharArrayToString(result);
+   return data;
+}
+
+//+------------------------------------------------------------------+
+//| چک کردن وجود پوزیشن باز با مجیک مشخص                            |
+//+------------------------------------------------------------------+
+bool ExistsOpenTrade(int magic)
+{
+   for (int i = 0; i < OrdersTotal(); i++)
+   {
+      if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if (OrderMagicNumber() == magic && OrderSymbol() == Symbol())
+            return true;
+      }
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| استخراج اطلاعات از JSON به صورت دستی                            |
+//+------------------------------------------------------------------+
+bool ParseJSON(string json, string &symbol, string &signal, double &price, double &sl, double &tp, string &timeStr)
+{
+   int p;
+
+   p = StringFind(json, "\"symbol\"");
+   if (p == -1) return false;
+   symbol = ExtractValue(json, p);
+
+   p = StringFind(json, "\"signal\"");
+   if (p == -1) return false;
+   signal = ExtractValue(json, p);
+
+   p = StringFind(json, "\"price\"");
+   if (p == -1) return false;
+   price = StrToDouble(ExtractValue(json, p));
+
+   p = StringFind(json, "\"sl\"");
+   if (p == -1) return false;
+   sl = StrToDouble(ExtractValue(json, p));
+
+   p = StringFind(json, "\"tp\"");
+   if (p == -1) return false;
+   tp = StrToDouble(ExtractValue(json, p));
+
+   p = StringFind(json, "\"time\"");
+   if (p == -1) return false;
+   timeStr = ExtractValue(json, p);
+
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| استخراج مقدار از رشته JSON                                      |
+//+------------------------------------------------------------------+
+string ExtractValue(string json, int startPos)
+{
+   int colon = StringFind(json, ":", startPos);
+   if (colon == -1) return "";
+   int quote1 = StringFind(json, "\"", colon + 1);
+   int quote2 = StringFind(json, "\"", quote1 + 1);
+   if (quote1 == -1 || quote2 == -1) return "";
+   return StringSubstr(json, quote1 + 1, quote2 - quote1 - 1);
+}
+//+------------------------------------------------------------------+
