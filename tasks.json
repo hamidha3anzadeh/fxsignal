@@ -6,7 +6,7 @@ import requests
 from datetime import datetime
 
 # تنظیمات گیت‌هاب
-GITHUB_TOKEN = "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"
+GITHUB_TOKEN = "REPLACE_WITH_ENV_OR_SECRET" = "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"
 REPO_OWNER = "username_یا_organization"
 REPO_NAME = "repository_name"
 BRANCH = "main"
