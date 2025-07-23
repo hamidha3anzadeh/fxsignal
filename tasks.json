@@ -1,0 +1,121 @@
+import base64
+import hashlib
+import json
+import os
+import requests
+from datetime import datetime
+
+# تنظیمات گیت‌هاب
+GITHUB_TOKEN = "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"
+REPO_OWNER = "username_یا_organization"
+REPO_NAME = "repository_name"
+BRANCH = "main"
+
+# فایل تسک‌ها
+TASKS_FILE = "tasks.json"
+
+headers = {
+    "Authorization": f"token {GITHUB_TOKEN}",
+    "Accept": "application/vnd.github.v3+json"
+}
+
+def load_tasks():
+    if os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        return {"tasks": []}
+
+def save_tasks(tasks_data):
+    with open(TASKS_FILE, "w", encoding="utf-8") as f:
+        json.dump(tasks_data, f, indent=4, ensure_ascii=False)
+
+def get_github_file_sha(path):
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{path}?ref={BRANCH}"
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()["sha"]
+    elif response.status_code == 404:
+        return None
+    else:
+        raise Exception(f"Error getting file sha: {response.status_code}, {response.text}")
+
+def upload_file_to_github(local_path, github_path):
+    if not os.path.exists(local_path):
+        print(f"فایل {local_path} موجود نیست، آپلود انجام نشد.")
+        return False
+
+    with open(local_path, "rb") as f:
+        content_encoded = base64.b64encode(f.read()).decode()
+
+    sha = get_github_file_sha(github_path)
+    data = {
+        "message": f"بروزرسانی فایل {github_path} از طریق اسکریپت",
+        "content": content_encoded,
+        "branch": BRANCH
+    }
+    if sha:
+        data["sha"] = sha
+
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{github_path}"
+    response = requests.put(url, headers=headers, json=data)
+    if response.status_code in [200, 201]:
+        print(f"فایل {github_path} با موفقیت روی گیت‌هاب آپدیت شد.")
+        return True
+    else:
+        print(f"خطا در آپلود فایل {github_path} روی گیت‌هاب: {response.status_code}")
+        print(response.text)
+        return False
+
+def process_tasks():
+    tasks_data = load_tasks()
+    changed = False
+
+    for task in tasks_data.get("tasks", []):
+        if task.get("status") != "pending":
+            continue
+
+        file_path = task.get("file")
+        action = task.get("action")
+        content = task.get("content", "")
+
+        try:
+            if action == "edit" or action == "add":
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                print(f"فایل {file_path} به صورت {action} ویرایش شد.")
+                changed = True
+
+            elif action == "delete":
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    print(f"فایل {file_path} حذف شد.")
+                    changed = True
+                else:
+                    print(f"فایل {file_path} برای حذف یافت نشد.")
+
+            else:
+                print(f"عملیات {action} برای فایل {file_path} پشتیبانی نمی‌شود.")
+                task["status"] = "failed"
+                continue
+
+            # اگر تغییر محلی انجام شد، فایل رو روی گیت‌هاب هم آپلود کن (اگر حذف نیست)
+            if action in ["edit", "add"]:
+                uploaded = upload_file_to_github(file_path, file_path)
+                task["status"] = "done" if uploaded else "failed"
+            elif action == "delete":
+                # حذف فایل از گیت‌هاب پیچیده‌تره و نیاز به API جدا داره؛ اینجا فقط وضعیت می‌ذاریم
+                task["status"] = "done"
+
+        except Exception as e:
+            print(f"خطا در انجام عملیات روی فایل {file_path}: {e}")
+            task["status"] = "failed"
+
+    if changed:
+        tasks_data["last_updated"] = datetime.utcnow().isoformat()
+        save_tasks(tasks_data)
+    else:
+        print("هیچ تسکی پردازش نشد یا تغییراتی ایجاد نشد.")
+
+if __name__ == "__main__":
+    process_tasks()
