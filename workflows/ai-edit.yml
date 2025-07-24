@@ -41,8 +41,8 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.AI_TOKEN }}
       run: |
-        git config user.name "AI Assistant"
-        git config user.email "ai@openai.com"
+        git config user.name "hamidha3anzadeh"
+        git config user.email "SMPK5300@GMAIL.COM"
         git add "${{ github.event.inputs.file_name }}"
         git commit -m "🧠 AI edited ${{ github.event.inputs.file_name }} with ${{ github.event.inputs.command_type }}"
         git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }} HEAD:main
