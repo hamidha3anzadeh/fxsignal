@@ -1,0 +1,30 @@
+name: Update Expert Files
+
+on:
+  workflow_dispatch:
+    inputs:
+      filename:
+        description: 'Target file to update (e.g. gold.mq4)'
+        required: true
+      content:
+        description: 'New content to write into the file'
+        required: true
+
+jobs:
+  update-file:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update the file
+        run: |
+          echo "${{ github.event.inputs.content }}" > "${{ github.event.inputs.filename }}"
+      
+      - name: Commit and push changes
+        run: |
+          git config user.name "Auto AI Commit"
+          git config user.email "bot@example.com"
+          git add "${{ github.event.inputs.filename }}"
+          git commit -m "AI updated ${{ github.event.inputs.filename }}"
+          git push origin HEAD
