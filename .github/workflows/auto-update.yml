@@ -1,0 +1,21 @@
+name: Auto-Updater
+on:
+  schedule:
+    - cron: '0 12 * * *'  # هر روز ساعت ۱۲ ظهر اجرا می‌شود
+  workflow_dispatch:       # یا با دکمه دستی اجرا کن
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.DEEPSEEK_TOKEN }}  # توکنی که قبلاً ساختی
+      - name: Update File
+        run: |
+          echo "این متن خودکار آپدیت شد!" > auto-update.txt
+          git config --global user.name "GitHub-Bot"
+          git config --global user.email "bot@github.com"
+          git add .
+          git commit -m "آپدیت خودکار"
+          git push
