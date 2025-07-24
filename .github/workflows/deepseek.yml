@@ -1,1 +1,20 @@
 
+name: DeepSeek Assistant
+on: [workflow_dispatch]
+
+jobs:
+  help:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.DEEPSEEK_TOKEN }}
+      - name: Run Script
+        run: |
+          echo "سلام! این کار کرد!" > test.txt
+          git config --global user.name "hamidha3anzadeh"
+          git config --global user.email "smpk5300@gmail.com"
+          git add .
+          git commit -m "تست دیپ‌سیک"
+          git push
