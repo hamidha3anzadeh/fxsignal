@@ -1,0 +1,47 @@
+name: AI File Editor
+
+on:
+  workflow_dispatch:
+    inputs:
+      command_type:
+        description: 'نوع فرمان (overwrite, delete, append)'
+        required: true
+        default: overwrite
+      file_name:
+        description: 'نام فایل برای تغییر (مثلاً gold.mq4)'
+        required: true
+      content:
+        description: 'محتوای جدید (یا خالی برای پاک کردن)'
+        required: false
+
+jobs:
+  run_command:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Execute command
+      run: |
+        FILE="${{ github.event.inputs.file_name }}"
+        CONTENT="${{ github.event.inputs.content }}"
+        TYPE="${{ github.event.inputs.command_type }}"
+
+        if [ "$TYPE" = "overwrite" ]; then
+          echo "$CONTENT" > "$FILE"
+        elif [ "$TYPE" = "append" ]; then
+          echo "$CONTENT" >> "$FILE"
+        elif [ "$TYPE" = "delete" ]; then
+          > "$FILE"
+        fi
+
+    - name: Commit & Push
+      env:
+        GH_TOKEN: ${{ secrets.AI_TOKEN }}
+      run: |
+        git config user.name "AI Assistant"
+        git config user.email "ai@openai.com"
+        git add "${{ github.event.inputs.file_name }}"
+        git commit -m "🧠 AI edited ${{ github.event.inputs.file_name }} with ${{ github.event.inputs.command_type }}"
+        git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }} HEAD:main
